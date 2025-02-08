@@ -34,13 +34,58 @@ you can rewrite any rule<br>
     lookup.facts = [
         "if A is a B and B has C then A has C",
         "if A is a cat and cat has C then A has C", // unreadable
-        "Tom is cat", "cat = has tail", "Tom has tail", // this is how I will explain it to my son
-        "Tom = is cat", "is cat = has tail", "Tom = has tail"// actually this is how I explained it to my son
+        "Tom is cat", "is a cat => has tail", "Tom has tail", // this is how I will explain it to my son
+        "Tom is a cat", "is a cat => has tail", "Tom has tail"// actually this is how I explained it to my son
     ];
-    lookup.rewrite = function()
-    {
 
-    }
+    lookup.get_combinations_ish = function(stuff, splitter)
+    {
+        var splitted = stuff.split(splitter);
+        var rules = [];
+        if ( splitted.length > 1)
+        {
+            for (let i = 1; i < splitted.length; i += 1) {
+                var rule = {
+                    from: splitted.slice(0, i).join(splitter),
+                    to: splitted.slice(i).join(splitter)
+                };
+                rules.push(rule);
+            }
+        }
+        console.log(rules);
+        return rules;
+    };
+    lookup.get_rules = function(stuff)
+    {
+        var result = lookup.get_combinations_ish(stuff, " => ");
+        return result;
+    };
+    lookup.rewrite = function(stuff)
+    {
+        lookup.facts.push(stuff);
+        var newFacts = [stuff];
+        for(const fact of lookup.facts)
+        {
+            for(const maybe_rule of lookup.facts)
+            {
+                var rules = lookup.get_rules(maybe_rule);
+                for (const rule of rules)
+                {
+                    if (fact.indexOf(rule.from) >= 0)
+                    {
+                        var combos = lookup.get_combinations_ish(fact, rule.from);
+                        for(const c of combos)
+                        {
+                            var news = c.from + rule.to + c.to;
+                            console.log(news);
+                            newFacts.push(news);
+                        }
+                    }
+                }
+            }
+        }
+        lookup.facts.concat(newFacts);
+    };
 </script>
 <input id="repl" onkeyup="lookup.last_written = event.originalTarget.value; console.log(lookup.last_written);" />
 <button onclick="
