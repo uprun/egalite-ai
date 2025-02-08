@@ -52,7 +52,7 @@ you can rewrite any rule<br>
                 rules.push(rule);
             }
         }
-        console.log(rules);
+        //console.log(rules);
         return rules;
     };
     lookup.get_rules = function(stuff)
@@ -77,7 +77,7 @@ you can rewrite any rule<br>
                         for(const c of combos)
                         {
                             var news = c.from + rule.to + c.to;
-                            console.log(news);
+                            console.log(fact, rule, news);
                             newFacts.push(news);
                         }
                     }
