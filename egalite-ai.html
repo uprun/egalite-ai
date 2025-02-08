@@ -26,15 +26,21 @@ if I can provide some of the thinking part as an algorithm I might achieve good-
 in unix philosophy every program should be short-lived</br>
 | every communication should be in text
 </br>
-you can rewrite any rule<br>
+you can rewrite any rule - actually it is better not to rewrite rules<br>
 | rules are part of the database<br>
+I might add spaces around the parts of the rules in order to prevent accidental match</br>
+
+</br>
+Bad examples:</br>
+"if A is a B and B has C then A has C", // unreadable </br>
+Better examples:</br>
+"Tom is a cat", "is a cat => has tail", "Tom has tail"// actually this is how I explained it to my son</br>
 <script>
     lookup = {};
     lookup.last_written = "";
+    lookup.rules = [];
     lookup.facts = [
-        "if A is a B and B has C then A has C",
-        "if A is a cat and cat has C then A has C", // unreadable
-        "Tom is cat", "is a cat => has tail", "Tom has tail", // this is how I will explain it to my son
+    
         "Tom is a cat", "is a cat => has tail", "Tom has tail"// actually this is how I explained it to my son
     ];
 
