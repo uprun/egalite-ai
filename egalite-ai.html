@@ -1,47 +1,27 @@
-just rewrite very fast - egalite-ai</br>
+egalite-ai</br>
+local LLM with chat-like reasoning [not there yet as of 2025-02-08]</br>
+
+embrace fast rewrite</br>
 </br>
-Preemptive optimization is the root of all evil</br>
+Create first, optimize later</br>
 </br>
-I don't want an LLM I want just an LM plus Prolog</br>
-| basically I want natural looking Prolog</br>
-коротка відповідь ліпша за довгу</br>
-start with simple implementation and see where it gets you</br>
-</br>
-unfortunatelly or even fortunatelly you can find connection between anything</br>
-it can be a silly connection but still a connection</br>
-Everything is made of atoms</br>
-| except for thoughts</br>
-| except for magnetic fields</br>
-| but this gives connection to thoughts and magnetic fields</br>
+Be compact , Be readable</br>
+avoid " and " usage </br>
+Test every 5 minutes or often</br>
 
 </br>
-I will not reach levels of ChatGPT or DeepSeek R1 but I will try to explore alternative path</br>
-I will start with reasoning in a form of chat</br>
+simple LLM models + chain-of-thought context, like Theo - t3.gg did </br>
 
 </br>
-but I might re-use simple models, simple LLM models</br>
-in one of the videos of theo-3g he copied thinking part of r1 as a context to claude and asked same question and claude answered</br>
-if I can provide some of the thinking part as an algorithm I might achieve good-enough results with less compute</br>
-</br>
-in unix philosophy every program should be short-lived</br>
-| every communication should be in text
-</br>
-you can rewrite any rule - actually it is better not to rewrite rules<br>
-| rules are part of the database<br>
-I might add spaces around the parts of the rules in order to prevent accidental match</br>
-
-</br>
-Bad examples:</br>
 "if A is a B and B has C then A has C", // unreadable </br>
-Better examples:</br>
-"Tom is a cat", "is a cat => has tail", "Tom has tail"// actually this is how I explained it to my son</br>
+"Tom is a cat", "is a cat => has tail", "Tom has tail"// actually this is how I explain to my 2yo</br>
 <script>
     lookup = {};
     lookup.last_written = "";
-    lookup.facts = [
-    
-        "Tom is a cat", "is a cat => has tail", "Tom has tail"// actually this is how I explained it to my son
+    lookup.statements = [
     ];
+
+    lookup.text_statements = ["Tom is a cat", "is a cat => has tail"];
 
     lookup.get_combinations_ish = function(stuff, splitter)
     {
@@ -60,38 +40,74 @@ Better examples:</br>
         //console.log(rules);
         return rules;
     };
-    lookup.get_rules = function(stuff)
+    lookup.get_first_rule = function(stuff)
     {
-        var result = lookup.get_combinations_ish(stuff, " => ");
+        var result = lookup.get_combinations_ish(stuff, " => ")[0];
         return result;
     };
-    lookup.rewrite = function(stuff)
+    lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
     {
-        lookup.facts.push(stuff);
-        var newFacts = [stuff];
-        for(const fact of lookup.facts)
+        for(const existing of lookup.statements)
         {
-            for(const maybe_rule of lookup.facts)
+            if(existing.original === stuff) 
             {
-                var rules = lookup.get_rules(maybe_rule);
-                for (const rule of rules)
+                return;
+            }
+        }
+         
+        if (stuff.indexOf(" => ") >= 0)
+        {
+            const to_add = {
+                type: "rule",
+                original: stuff,
+                where_it_comes_from: where_it_comes_from,
+                data: lookup.get_first_rule(stuff),
+                chain_of_thought: chain_of_thought || [stuff]
+            };
+            lookup.statements.push(to_add);
+            console.log(to_add);
+        }
+        else
+        {
+            const to_add = {
+                type: "fact",
+                original: stuff,
+                where_it_comes_from: where_it_comes_from,
+                data: stuff,
+                chain_of_thought: chain_of_thought || [stuff]
+            };
+            lookup.statements.push(to_add);
+            console.log(to_add);
+        }
+    };
+    lookup.rewrite = function()
+    {
+        for(const fact of lookup.statements)
+        {
+            if (fact.type != "fact") continue;
+            for(const rule of lookup.statements)
+            {
+                if (rule.type != "rule") continue;
+                if (fact.data.indexOf(rule.data.from) >= 0)
                 {
-                    if (fact.indexOf(rule.from) >= 0)
+                    var combos = lookup.get_combinations_ish(fact.data, rule.data.from);
+                    for(const c of combos)
                     {
-                        var combos = lookup.get_combinations_ish(fact, rule.from);
-                        for(const c of combos)
-                        {
-                            var news = c.from + rule.to + c.to;
-                            console.log(fact, rule, news);
-                            newFacts.push(news);
-                        }
+                        var news = c.from + rule.data.to + c.to;
+                        //console.log(fact, rule, news);
+                        var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, news])
+                        lookup.add_statement(news, 'derived-by-rule', chain_of_thought);
                     }
                 }
             }
         }
-        lookup.facts.concat(newFacts);
+        setTimeout(lookup.rewrite, 30);
     };
+    setTimeout(lookup.rewrite, 30);
+    for(var text of lookup.text_statements)
+    {
+        lookup.add_statement(text, 'predefined-data');
+    }
 </script>
 <input id="repl" onkeyup="lookup.last_written = event.originalTarget.value; console.log(lookup.last_written);" />
-<button onclick="
-    lookup.rewrite(lookup.last_written)">rewrite</button>
+<button onclick="lookup.add_statement(lookup.last_written, 'user-input')">add</button>
