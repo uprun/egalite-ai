@@ -1,23 +1,14 @@
 egalite-ai</br>
-local chat-like reasoning [not there yet as of 2025-02-08]</br>
-</br>
-Idea is to run Prolog 1000x faster on GPU/NPU/TPU</br>
-|> what is Prolog - it is a model for reasoning that has been a topic of rivalry between USA and Japan (some time ago)</br>
-|> see <a href="https://en.wikipedia.org/wiki/Fifth_Generation_Computer_Systems"> https://en.wikipedia.org/wiki/Fifth_Generation_Computer_Systems</a> </br>
-</br>
-Why am I saying this first instead of developing it first? </br>
-|> because good ideas become even better when shared </br>
-</br>
+local chat-like reasoning</br>
 </br>
 Motto:</br>
-Create first, optimize later</br>
 Be readable</br>
-avoid " and " usage </br>
-Test often</br>
+Provide partial answer ASAP</br>
+allow to break reasoning</br>
 </br>
-Readability matters: </br>
-"if A is a B and B has C then A has C", // unreadable </br>
-"Tom is a cat" =>  "Tom has tail" // actually this is how I explain to my 2yo [updated - 2025-02-11]</br>
+if A is a B and B has C then A has C</br>
+vs</br>
+A is B | B has C => A has C</br>
 <script>
     lookup = {};
     lookup.last_written = "";
