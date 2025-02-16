@@ -1,0 +1,97 @@
+<script>
+function parseRule(ruleStr) {
+    const [premisesPart, conclusionPart] = ruleStr.split(' => ');
+    const premises = premisesPart.split(' | ').map(premiseStr => {
+      const parts = premiseStr.split(' ');
+      return {
+        type: parts[1],
+        subjectVar: parts[0],
+        objectVar: parts[2]
+      };
+    });
+    const conclusionParts = conclusionPart.split(' ');
+    return {
+      premises,
+      conclusion: {
+        type: conclusionParts[1],
+        subjectVar: conclusionParts[0],
+        objectVar: conclusionParts[2]
+      }
+    };
+  }
+  
+  function unify(premise, stmt, binding) {
+    const subjectVar = premise.subjectVar;
+    const objectVar = premise.objectVar;
+    const stmtSubject = stmt.subject;
+    const stmtObject = stmt.object;
+  
+    if (subjectVar in binding && binding[subjectVar] !== stmtSubject) return null;
+    if (objectVar in binding && binding[objectVar] !== stmtObject) return null;
+  
+    const newBinding = { ...binding };
+    if (!(subjectVar in newBinding)) newBinding[subjectVar] = stmtSubject;
+    if (!(objectVar in newBinding)) newBinding[objectVar] = stmtObject;
+  
+    return newBinding;
+  }
+  
+  function applyRules(statements, ruleStrs) {
+    const parsedRules = ruleStrs.map(parseRule);
+    const parsedStatements = statements.map(stmt => {
+      const parts = stmt.split(' ');
+      return { type: parts[1], subject: parts[0], object: parts[2] };
+    });
+  
+    const existingStatements = new Set(statements);
+    const newStatements = [];
+  
+    for (const rule of parsedRules) {
+      let bindings = [{}];
+  
+      for (const premise of rule.premises) {
+        const nextBindings = [];
+        for (const binding of bindings) {
+          const candidates = parsedStatements.filter(s => s.type === premise.type);
+          for (const stmt of candidates) {
+            const unified = unify(premise, stmt, binding);
+            if (unified) nextBindings.push(unified);
+          }
+        }
+        bindings = nextBindings;
+        if (bindings.length === 0) break;
+      }
+  
+      for (const binding of bindings) {
+        const subject = binding[rule.conclusion.subjectVar];
+        const object = binding[rule.conclusion.objectVar];
+        if (subject && object) {
+          const newStmt = `${subject} ${rule.conclusion.type} ${object}`;
+          if (!existingStatements.has(newStmt)) {
+            newStatements.push(newStmt);
+            existingStatements.add(newStmt);
+          }
+        }
+      }
+    }
+  
+    return newStatements;
+  }
+  
+  // Test and Verification
+  function test() {
+    const inputStatements = ["Tom is cat", "cat has tail", "cat has whiskers", "human is mortal"];
+    const inputRules = ["A is B | B has C => A has C"];
+    const expectedOutput = ["Tom has tail", "Tom has whiskers"];
+    const result = applyRules(inputStatements, inputRules);
+  
+    const isCorrect = expectedOutput.every(stmt => result.includes(stmt)) && 
+                      result.length === expectedOutput.length;
+  
+    console.log("Test Result:", isCorrect ? "PASSED" : "FAILED");
+    console.log("Generated Output:", result);
+    console.log("Expected Output:", expectedOutput);
+  }
+  
+  test();
+</script>

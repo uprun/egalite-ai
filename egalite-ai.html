@@ -9,13 +9,19 @@ allow to break reasoning</br>
 if A is a B and B has C then A has C</br>
 vs</br>
 A is B | B has C => A has C</br>
+rewrite when "Tom is cat"</br>
+Tom is cat | cat has C => Tom has C</br>
+rewrite when "cat has tail"</br>
+Tom is cat | cat has tail => Tom has tail</br>
+rewrite when "cat has whiskers"</br>
+Tom is cat | cat has whiskers => Tom has whiskers</br>
 <script>
     lookup = {};
     lookup.last_written = "";
     lookup.statements = [
     ];
 
-    lookup.text_statements = ["Tom is a cat", "is a cat => has tail"];
+    lookup.text_statements = ["Tom is cat", "cat has tail", "cat has whiskers", "A is B | B has C => A has C"];
 
     lookup.get_combinations_ish = function(stuff, splitter)
     {

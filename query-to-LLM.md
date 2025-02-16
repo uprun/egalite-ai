@@ -1,0 +1,3 @@
+Can you write a JavaScript pattern matching system for a rule "A is B | B has C => A has C" which means the following "if A is B and B has C then A has C" where all capital letters are variable, if variable has same name then in all usages it has same value. Please test the implementation on the following statements considering: ["Tom is cat", "cat has tail", "cat has whiskers", "human is mortal"] and using the rule "A is B | B has C => A has C" should generate ["Tom has tail", "Tom has whiskers"].
+Also consider that rules should be part of the input since I expect to add rule "A is B | B is C => A is C".
+Use code to verify the answer.
