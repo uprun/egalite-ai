@@ -10,13 +10,7 @@ allow to break reasoning</br>
 if A is a B and B has C then A has C</br>
 vs earmuffs</br>
 *A* is *B* | *B* has *C* => *A* has *C*</br>
-rewrite when "Tom is cat"</br>
-Tom is cat | cat has C => Tom has C</br>
-rewrite when "cat has tail"</br>
-Tom is cat | cat has tail => Tom has tail</br>
-rewrite when "cat has whiskers"</br>
-Tom is cat | cat has whiskers => Tom has whiskers</br>
-A is cat | cat has tail => A has tail
+What has Tom? => Tom has *?* // query </br>
 <script>
     lookup = {};
     lookup.last_written = "";
@@ -111,7 +105,7 @@ A is cat | cat has tail => A has tail
                     }
 
                     
-                    var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, combined_rule]);
+                    var chain_of_thought = (rule.chain_of_thought.slice()).concat([fact.original, combined_rule]);
                     lookup.add_statement(combined_rule, 'partially-applied-rule', chain_of_thought);
                     all_conditions_are_met = false;
                     break;// ??? - yeah lets make final check on next round
@@ -127,7 +121,7 @@ A is cat | cat has tail => A has tail
                     const parts = rule.data.conclusion.split(named_slot_regexp);
                     if (parts.length == 1) 
                     {
-                        var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, rule.data.conclusion]);
+                        var chain_of_thought = (rule.chain_of_thought.slice()).concat([rule.data.conclusion]);
                         lookup.add_statement(rule.data.conclusion, 'fully-applied-rule', chain_of_thought);
                     }
                 }
