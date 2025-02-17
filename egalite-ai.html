@@ -1,3 +1,4 @@
+<body>
 egalite-ai</br>
 local chat-like reasoning</br>
 </br>
@@ -7,44 +8,23 @@ Provide partial answer ASAP</br>
 allow to break reasoning</br>
 </br>
 if A is a B and B has C then A has C</br>
-vs</br>
-A is B | B has C => A has C</br>
+vs earmuffs</br>
+*A* is *B* | *B* has *C* => *A* has *C*</br>
 rewrite when "Tom is cat"</br>
 Tom is cat | cat has C => Tom has C</br>
 rewrite when "cat has tail"</br>
 Tom is cat | cat has tail => Tom has tail</br>
 rewrite when "cat has whiskers"</br>
 Tom is cat | cat has whiskers => Tom has whiskers</br>
+A is cat | cat has tail => A has tail
 <script>
     lookup = {};
     lookup.last_written = "";
     lookup.statements = [
     ];
 
-    lookup.text_statements = ["Tom is cat", "cat has tail", "cat has whiskers", "A is B | B has C => A has C"];
+    lookup.text_statements = ["Tom is cat", "cat has tail", "cat has whiskers", "*A* is *B* | *B* has *C* => *A* has *C*"];
 
-    lookup.get_combinations_ish = function(stuff, splitter)
-    {
-        var splitted = stuff.split(splitter);
-        var rules = [];
-        if ( splitted.length > 1)
-        {
-            for (let i = 1; i < splitted.length; i += 1) {
-                var rule = {
-                    from: splitted.slice(0, i).join(splitter),
-                    to: splitted.slice(i).join(splitter)
-                };
-                rules.push(rule);
-            }
-        }
-        //console.log(rules);
-        return rules;
-    };
-    lookup.get_first_rule = function(stuff)
-    {
-        var result = lookup.get_combinations_ish(stuff, " => ")[0];
-        return result;
-    };
     lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
     {
         for(const existing of lookup.statements)
@@ -57,11 +37,16 @@ Tom is cat | cat has whiskers => Tom has whiskers</br>
          
         if (stuff.indexOf(" => ") >= 0)
         {
+            const [conditionsPart , conclusion] = stuff.split(" => ");
+            const conditions = conditionsPart.split(" | ");
             const to_add = {
                 type: "rule",
                 original: stuff,
                 where_it_comes_from: where_it_comes_from,
-                data: lookup.get_first_rule(stuff),
+                data: {
+                    conditions: conditions,
+                    conclusion: conclusion
+                },
                 chain_of_thought: chain_of_thought || [stuff]
             };
             lookup.statements.push(to_add);
@@ -80,6 +65,10 @@ Tom is cat | cat has whiskers => Tom has whiskers</br>
             console.log(to_add);
         }
     };
+    lookup.escapeRegExp = function(string) 
+    {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
     lookup.rewrite = function()
     {
         for(const fact of lookup.statements)
@@ -88,17 +77,72 @@ Tom is cat | cat has whiskers => Tom has whiskers</br>
             for(const rule of lookup.statements)
             {
                 if (rule.type != "rule") continue;
-                if (fact.data.indexOf(rule.data.from) >= 0)
+                var all_conditions_are_met = true;
+                const named_slot_regexp = /\*[A-Z]\*/
+
+                for(const single_condition of rule.data.conditions)
                 {
-                    var combos = lookup.get_combinations_ish(fact.data, rule.data.from);
-                    for(const c of combos)
+                    //"B has C".split(/[A-Z]/)
+                    // [ "", " has ", "" ]
+                    
+                    const parts = single_condition.split(named_slot_regexp);
+                    if (parts.length == 1) continue;
+                    var nonEmpty = parts.filter(p => p != "");
+                    var escaped = nonEmpty.map(p => lookup.escapeRegExp(p));
+                    var mask = escaped.join("|");
+                    var r = new RegExp(mask);
+                    var values = fact.data.split(r);
+                    var variables = single_condition.split(r);
+                    if (values.length != variables.length) 
                     {
-                        var news = c.from + rule.data.to + c.to;
-                        //console.log(fact, rule, news);
-                        var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, news])
-                        lookup.add_statement(news, 'derived-by-rule', chain_of_thought);
+                        all_conditions_are_met = false; 
+                        continue;
+                    }
+                    //console.log(values, variables);
+                    var combined_rule = rule.data.conditions.join(" | ") + " => " + rule.data.conclusion;
+                    for(var k = 0; k < variables.length; k++)
+                    {
+                        const single_variable = variables[k];
+                        const just_value = values[k];
+                        if (single_variable !== "")
+                        {
+                            combined_rule = combined_rule.replaceAll(single_variable, just_value);
+                        }
+                    }
+
+                    
+                    var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, combined_rule]);
+                    lookup.add_statement(combined_rule, 'partially-applied-rule', chain_of_thought);
+                    all_conditions_are_met = false;
+                    break;// ??? - yeah lets make final check on next round
+
+                    //"hello *B* has *C*".split(/\*[A-Z]\*/)
+                    //Array(3) [ "hello ", " has ", "" ]
+
+
+                }
+
+                if (all_conditions_are_met)
+                {
+                    const parts = rule.data.conclusion.split(named_slot_regexp);
+                    if (parts.length == 1) 
+                    {
+                        var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, rule.data.conclusion]);
+                        lookup.add_statement(rule.data.conclusion, 'fully-applied-rule', chain_of_thought);
                     }
                 }
+                
+                // if (fact.data.indexOf(rule.data.from) >= 0)
+                // {
+                //     var combos = lookup.get_combinations_ish(fact.data, rule.data.from);
+                //     for(const c of combos)
+                //     {
+                //         var news = c.from + rule.data.to + c.to;
+                //         //console.log(fact, rule, news);
+                //         var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, news])
+                //         lookup.add_statement(news, 'derived-by-rule', chain_of_thought);
+                //     }
+                // }
             }
         }
         setTimeout(lookup.rewrite, 30);
@@ -111,3 +155,4 @@ Tom is cat | cat has whiskers => Tom has whiskers</br>
 </script>
 <input id="repl" onkeyup="lookup.last_written = event.originalTarget.value; console.log(lookup.last_written);" />
 <button onclick="lookup.add_statement(lookup.last_written, 'user-input')">add</button>
+</body>
