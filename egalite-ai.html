@@ -1,23 +1,38 @@
-<body>
-egalite-ai</br>
-local chat-like reasoning</br>
-</br>
-Motto:</br>
-Be readable</br>
-Provide partial answer ASAP</br>
-allow to break reasoning</br>
-</br>
-if A is a B and B has C then A has C</br>
-vs earmuffs</br>
-*A* is *B* | *B* has *C* => *A* has *C*</br>
-What has Tom? => Tom has *?* // query </br>
+
 <script>
     lookup = {};
     lookup.last_written = "";
     lookup.statements = [
     ];
 
-    lookup.text_statements = ["Tom is cat", "cat has tail", "cat has whiskers", "*A* is *B* | *B* has *C* => *A* has *C*"];
+    lookup.text_statements = [
+        "Tom is cat",
+        "cat has tail", 
+        "cat has whiskers", 
+        "*A* is *B* | *B* has *C* => *A* has *C*",
+        "*A*1 + 1 => *A*2",
+        "*A*2 + 1 => *A*3",
+        "*A*3 + 1 => *A*4",
+        "*A*4 + 1 => *A*5",
+        "*A*5 + 1 => *A*6",
+        "*A*6 + 1 => *A*7",
+        "*A*7 + 1 => *A*8",
+        "*A*8 + 1 => *A*9",
+        "*A*9 + 1 => *A*0 + 10",
+        "*A* 2 => *A* 1 + 1",
+        "*A* 3 => *A* 2 + 1",
+        "*A* 4 => *A* 3 + 1",
+        "*A* 5 => *A* 4 + 1",
+        "*A* 6 => *A* 5 + 1",
+        "*A* 7 => *A* 6 + 1",
+        "*A* 8 => *A* 7 + 1",
+        "*A* 9 => *A* 8 + 1",
+        // -----
+        "5 + 3"
+
+    ];
+</script>
+<script>
 
     lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
     {
@@ -59,6 +74,10 @@ What has Tom? => Tom has *?* // query </br>
             console.log(to_add);
         }
     };
+    </script>
+    <script>
+
+    
     lookup.escapeRegExp = function(string) 
     {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -84,10 +103,12 @@ What has Tom? => Tom has *?* // query </br>
                     var nonEmpty = parts.filter(p => p != "");
                     var escaped = nonEmpty.map(p => lookup.escapeRegExp(p));
                     var mask = escaped.join("|");
-                    var r = new RegExp(mask);
-                    var values = fact.data.split(r);
-                    var variables = single_condition.split(r);
-                    if (values.length != variables.length) 
+                    var inverted_named_slot_regexp = new RegExp(mask);
+                    var values = fact.data.split(inverted_named_slot_regexp);
+                    var non_empty_values = values.filter(v => v !== "");
+                    var variables = single_condition.split(inverted_named_slot_regexp);
+                    var non_empty_variables = variables.filter(v => v !== "");
+                    if (non_empty_values.length != non_empty_variables.length) 
                     {
                         all_conditions_are_met = false; 
                         continue;
@@ -96,8 +117,8 @@ What has Tom? => Tom has *?* // query </br>
                     var combined_rule = rule.data.conditions.join(" | ") + " => " + rule.data.conclusion;
                     for(var k = 0; k < variables.length; k++)
                     {
-                        const single_variable = variables[k];
-                        const just_value = values[k];
+                        const single_variable = non_empty_variables[k];
+                        const just_value = non_empty_values[k];
                         if (single_variable !== "")
                         {
                             combined_rule = combined_rule.replaceAll(single_variable, just_value);
@@ -105,7 +126,7 @@ What has Tom? => Tom has *?* // query </br>
                     }
 
                     
-                    var chain_of_thought = (rule.chain_of_thought.slice()).concat([fact.original, combined_rule]);
+                    var chain_of_thought = [rule.chain_of_thought, fact.chain_of_thought, combined_rule];
                     lookup.add_statement(combined_rule, 'partially-applied-rule', chain_of_thought);
                     all_conditions_are_met = false;
                     break;// ??? - yeah lets make final check on next round
@@ -121,7 +142,7 @@ What has Tom? => Tom has *?* // query </br>
                     const parts = rule.data.conclusion.split(named_slot_regexp);
                     if (parts.length == 1) 
                     {
-                        var chain_of_thought = (rule.chain_of_thought.slice()).concat([rule.data.conclusion]);
+                        var chain_of_thought = [rule.chain_of_thought, rule.data.conclusion];
                         lookup.add_statement(rule.data.conclusion, 'fully-applied-rule', chain_of_thought);
                     }
                 }
@@ -142,11 +163,33 @@ What has Tom? => Tom has *?* // query </br>
         setTimeout(lookup.rewrite, 30);
     };
     setTimeout(lookup.rewrite, 30);
+</script>
+<script>
     for(var text of lookup.text_statements)
     {
         lookup.add_statement(text, 'predefined-data');
     }
 </script>
+<body style="background-color: rgb(44, 44, 178); color: rgb(218, 151, 126);">
+egalite-ai</br>
+local chat-like reasoning</br>
+</br>
+Motto:</br>
+Be readable</br>
+Provide partial answer ASAP</br>
+allow to break reasoning</br>
+</br>
+if A is a B and B has C then A has C</br>
+vs earmuffs</br>
+*A* is *B* | *B* has *C* => *A* has *C*</br>
+What has Tom? => Tom has *?* // query </br>
+12 + 6 => 10 + 2 + 6
+12 => 
+*A*2 *B* => *A*0 + 2 *B*
+*A*1 *B* => *A*0 + 1 *B*
+*A*
+// I forgot to check if rule is A is B hello B, that B should have same value
+
 <input id="repl" onkeyup="lookup.last_written = event.originalTarget.value; console.log(lookup.last_written);" />
 <button onclick="lookup.add_statement(lookup.last_written, 'user-input')">add</button>
 </body>
