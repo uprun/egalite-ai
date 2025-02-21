@@ -36,6 +36,12 @@
 
     lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
     {
+        if (lookup.statements.length > 1000)
+        {
+            console.log("Statements limit");
+            return;
+
+        }
         for(const existing of lookup.statements)
         {
             if(existing.original === stuff) 
@@ -82,22 +88,42 @@
     {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     };
+
+    lookup.index_in_statements = 0;
+    lookup.index_in_rules = 0;
     lookup.rewrite = function()
     {
-        for(const fact of lookup.statements)
+        var start = new Date();
+        var operations_passed = 0;
+        console.log("rewrite", lookup.statements.length);
+        for(;lookup.index_in_statements < lookup.statements.length; lookup.index_in_statements++)
         {
+            const fact = lookup.statements[lookup.index_in_statements];
             if (fact.type != "fact") continue;
-            for(const rule of lookup.statements)
+            for(; lookup.index_in_rules < lookup.statements.length; lookup.index_in_rules++)
             {
+                const rule = lookup.statements[lookup.index_in_rules];
                 if (rule.type != "rule") continue;
+                operations_passed++;
                 var all_conditions_are_met = true;
                 const named_slot_regexp = /\*[A-Z]\*/
+                if (operations_passed > 1000)
+                {
+                    var current_date = new Date();
+                    if (current_date - start > 30)
+                    {
+                        setTimeout(lookup.rewrite, 30);
+                        return;
+                    }
+                    operations_passed -= 1000;
+                }
 
                 for(const single_condition of rule.data.conditions)
                 {
                     //"B has C".split(/[A-Z]/)
                     // [ "", " has ", "" ]
                     
+                    // this ir really hardly readable
                     const parts = single_condition.split(named_slot_regexp);
                     if (parts.length == 1) continue;
                     var nonEmpty = parts.filter(p => p != "");
@@ -126,7 +152,7 @@
                     }
 
                     
-                    var chain_of_thought = [rule.chain_of_thought, fact.chain_of_thought, combined_rule];
+                    var chain_of_thought = [rule.original, fact.original, combined_rule];
                     lookup.add_statement(combined_rule, 'partially-applied-rule', chain_of_thought);
                     all_conditions_are_met = false;
                     break;// ??? - yeah lets make final check on next round
@@ -142,24 +168,14 @@
                     const parts = rule.data.conclusion.split(named_slot_regexp);
                     if (parts.length == 1) 
                     {
-                        var chain_of_thought = [rule.chain_of_thought, rule.data.conclusion];
+                        var chain_of_thought = [rule.original, rule.data.conclusion];
                         lookup.add_statement(rule.data.conclusion, 'fully-applied-rule', chain_of_thought);
                     }
                 }
-                
-                // if (fact.data.indexOf(rule.data.from) >= 0)
-                // {
-                //     var combos = lookup.get_combinations_ish(fact.data, rule.data.from);
-                //     for(const c of combos)
-                //     {
-                //         var news = c.from + rule.data.to + c.to;
-                //         //console.log(fact, rule, news);
-                //         var chain_of_thought = (fact.chain_of_thought.slice()).concat([rule.original, news])
-                //         lookup.add_statement(news, 'derived-by-rule', chain_of_thought);
-                //     }
-                // }
             }
+            lookup.index_in_rules = 0;
         }
+        lookup.index_in_statements = 0;
         setTimeout(lookup.rewrite, 30);
     };
     setTimeout(lookup.rewrite, 30);
