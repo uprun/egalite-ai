@@ -47,9 +47,6 @@
     };
     lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
     {
-        
-    
-         
         if (stuff.indexOf(" => ") >= 0)
         {
             if (lookup.does_rule_exists(stuff))
@@ -64,10 +61,33 @@
                 var splitted_by_slots = single_condition.split(named_slot_regexp);
                 var non_empty_static_parts = splitted_by_slots
                     .filter(e => e !== "");
-                var escaped = 
-                    non_empty_static_parts
-                    .map(p => lookup.escapeRegExp(p));
-                var mask = escaped.join("|");
+                var mapped = 
+                    splitted_by_slots
+                    .map((p, index) => {
+                        if(index == 0)
+                        {
+                            if ( p !== "")
+                            {
+                                return "^" + lookup.escapeRegExp(p)
+                            }
+                        }
+                        if (index === splitted_by_slots.length - 1)
+                        {
+                            if (p !== "")
+                            {
+                                return lookup.escapeRegExp(p) + "$";
+                            }
+                        }
+                        if (p !== "")
+                        {
+                            return lookup.escapeRegExp(p);
+                        }
+                        return "";
+                    });
+
+                var filtered_regexps = mapped.filter(p => p !== "");
+
+                var mask = filtered_regexps.join("|");
                 var inverted_slot_regexp = new RegExp(mask);
 
                 var partially_prepared_regexp_components = splitted_by_slots.map(e => e === "" ? ".+" : lookup.escapeRegExp(e) );
