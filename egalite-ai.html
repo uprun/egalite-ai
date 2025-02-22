@@ -7,33 +7,33 @@
 
     lookup.text_statements = [
         "Tom is cat",
-        "cat has tail", 
-        "cat has whiskers", 
-        "*A* is *B* | *B* has *C* => *A* has *C*",
+        // "cat has tail", 
+        // "cat has whiskers", 
+        // "*A* is *B* | *B* has *C* => *A* has *C*",
         "*A*1 + 1 => *A*2",
-        "*A*2 + 1 => *A*3",
-        "*A*3 + 1 => *A*4",
-        "*A*4 + 1 => *A*5",
-        "*A*5 + 1 => *A*6",
-        "*A*6 + 1 => *A*7",
-        "*A*7 + 1 => *A*8",
-        "*A*8 + 1 => *A*9",
-        "*A*9 + 1 => *A*0 + 10",
-        "*A* 2 => *A* 1 + 1",
-        "*A* 3 => *A* 2 + 1",
-        "*A* 4 => *A* 3 + 1",
-        "*A* 5 => *A* 4 + 1",
-        "*A* 6 => *A* 5 + 1",
-        "*A* 7 => *A* 6 + 1",
-        "*A* 8 => *A* 7 + 1",
-        "*A* 9 => *A* 8 + 1",
-        // -----
-        "5 + 3"
+        // "*A*2 + 1 => *A*3",
+        // "*A*3 + 1 => *A*4",
+        // "*A*4 + 1 => *A*5",
+        // "*A*5 + 1 => *A*6",
+        // "*A*6 + 1 => *A*7",
+        // "*A*7 + 1 => *A*8",
+        // "*A*8 + 1 => *A*9",
+        // "*A*9 + 1 => *A*0 + 10",
+        // "*A* 2 => *A* 1 + 1",
+        // "*A* 3 => *A* 2 + 1",
+        // "*A* 4 => *A* 3 + 1",
+        // "*A* 5 => *A* 4 + 1",
+        // "*A* 6 => *A* 5 + 1",
+        // "*A* 7 => *A* 6 + 1",
+        // "*A* 8 => *A* 7 + 1",
+        // "*A* 9 => *A* 8 + 1",
+        // // -----
+        // "5 + 3"
 
     ];
 </script>
 <script>
-
+    lookup.rules = [];
     lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
     {
         if (lookup.statements.length > 1000)
@@ -52,20 +52,62 @@
          
         if (stuff.indexOf(" => ") >= 0)
         {
+            const named_slot_regexp = /\*[A-Z]\*/
             const [conditionsPart , conclusion] = stuff.split(" => ");
             const conditions = conditionsPart.split(" | ");
+            const conditions_objects = conditions.map(single_condition => {
+                
+                var splitted_by_slots = single_condition.split(named_slot_regexp);
+                var non_empty_static_parts = splitted_by_slots
+                    .filter(e => e !== "");
+                var escaped = 
+                    non_empty_static_parts
+                    .map(p => lookup.escapeRegExp(p));
+                var mask = escaped.join("|");
+                var inverted_slot_regexp = new RegExp(mask);
+
+                var partially_prepared_regexp_components = splitted_by_slots.map(e => e === "" ? ".+" : lookup.escapeRegExp(e) );
+                var partially_prepared_regexp = partially_prepared_regexp_components.join("");
+                var should_match = `^${partially_prepared_regexp}\$`;
+                var should_match_regexp = new RegExp(should_match);
+                var slots = single_condition.split(inverted_slot_regexp);
+                var slots_non_empty = slots.filter(e => e !== "");
+                const result = {
+                    already_was_matched: splitted_by_slots.length == 1,
+                    static_parts: non_empty_static_parts,
+                    inverted_slot_regexp: inverted_slot_regexp,
+                    slots: slots_non_empty,
+                    should_match_regexp: should_match_regexp,
+                    original: single_condition
+                };
+                return result;
+            });
             const to_add = {
                 type: "rule",
                 original: stuff,
                 where_it_comes_from: where_it_comes_from,
                 data: {
-                    conditions: conditions,
+                    conditions: conditions_objects,
                     conclusion: conclusion
                 },
                 chain_of_thought: chain_of_thought || [stuff]
             };
-            lookup.statements.push(to_add);
-            console.log(to_add);
+            if ( to_add.data.conditions.every(single_condition => single_condition.already_was_matched))
+            {
+                const to_add_statement_from_rule = {
+                    type: "fact",
+                    original: stuff,
+                    where_it_comes_from: "fully-applied-rule",
+                    chain_of_thought: chain_of_thought || [stuff]
+                };
+                lookup.statements.add(to_add_statement_from_rule)
+            }
+            else
+            {
+                lookup.rules.push(to_add);
+                console.log(to_add);
+            }
+            
         }
         else
         {
@@ -73,7 +115,6 @@
                 type: "fact",
                 original: stuff,
                 where_it_comes_from: where_it_comes_from,
-                data: stuff,
                 chain_of_thought: chain_of_thought || [stuff]
             };
             lookup.statements.push(to_add);
@@ -100,13 +141,13 @@
         {
             const fact = lookup.statements[lookup.index_in_statements];
             if (fact.type != "fact") continue;
-            for(; lookup.index_in_rules < lookup.statements.length; lookup.index_in_rules++)
+            for(; lookup.index_in_rules < lookup.rules.length; lookup.index_in_rules++)
             {
-                const rule = lookup.statements[lookup.index_in_rules];
+                const rule = lookup.rules[lookup.index_in_rules];
                 if (rule.type != "rule") continue;
                 operations_passed++;
                 var all_conditions_are_met = true;
-                const named_slot_regexp = /\*[A-Z]\*/
+                
                 if (operations_passed > 1000)
                 {
                     var current_date = new Date();
@@ -120,57 +161,37 @@
 
                 for(const single_condition of rule.data.conditions)
                 {
-                    //"B has C".split(/[A-Z]/)
-                    // [ "", " has ", "" ]
-                    
-                    // this ir really hardly readable
-                    const parts = single_condition.split(named_slot_regexp);
-                    if (parts.length == 1) continue;
-                    var nonEmpty = parts.filter(p => p != "");
-                    var escaped = nonEmpty.map(p => lookup.escapeRegExp(p));
-                    var mask = escaped.join("|");
-                    var inverted_named_slot_regexp = new RegExp(mask);
-                    var values = fact.data.split(inverted_named_slot_regexp);
-                    var non_empty_values = values.filter(v => v !== "");
-                    var variables = single_condition.split(inverted_named_slot_regexp);
-                    var non_empty_variables = variables.filter(v => v !== "");
-                    if (non_empty_values.length != non_empty_variables.length) 
-                    {
-                        all_conditions_are_met = false; 
+                    if (single_condition.already_was_matched) {
                         continue;
                     }
-                    //console.log(values, variables);
-                    var combined_rule = rule.data.conditions.join(" | ") + " => " + rule.data.conclusion;
-                    for(var k = 0; k < variables.length; k++)
+
+                    if (single_condition.should_match_regexp.test(fact.original) !== true)
                     {
-                        const single_variable = non_empty_variables[k];
+                        continue;
+                    }
+                    
+                    var values = fact.original.split(single_condition.inverted_slot_regexp);
+                    var non_empty_values = values.filter(v => v !== "");
+                    if ( non_empty_values.length != single_condition.slots.length)
+                    {
+                        console.log("values do not match to slots which is weird", fact.original, single_condition.original)
+                    }
+                    
+                    //console.log(values, variables);
+                    var combined_rule = rule.original;
+                    for(var k = 0; k < single_condition.slots.length; k++)
+                    {
+                        const just_slot = single_condition.slots[k];
                         const just_value = non_empty_values[k];
-                        if (single_variable !== "")
-                        {
-                            combined_rule = combined_rule.replaceAll(single_variable, just_value);
-                        }
+
+                        combined_rule = combined_rule.replaceAll(just_slot, just_value);
                     }
 
                     
                     var chain_of_thought = [rule.original, fact.original, combined_rule];
                     lookup.add_statement(combined_rule, 'partially-applied-rule', chain_of_thought);
-                    all_conditions_are_met = false;
-                    break;// ??? - yeah lets make final check on next round
+                    break;
 
-                    //"hello *B* has *C*".split(/\*[A-Z]\*/)
-                    //Array(3) [ "hello ", " has ", "" ]
-
-
-                }
-
-                if (all_conditions_are_met)
-                {
-                    const parts = rule.data.conclusion.split(named_slot_regexp);
-                    if (parts.length == 1) 
-                    {
-                        var chain_of_thought = [rule.original, rule.data.conclusion];
-                        lookup.add_statement(rule.data.conclusion, 'fully-applied-rule', chain_of_thought);
-                    }
                 }
             }
             lookup.index_in_rules = 0;
