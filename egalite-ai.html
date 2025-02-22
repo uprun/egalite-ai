@@ -1,236 +1,32 @@
-
+<script language="JavaScript" type="text/javascript" src="js/lookup.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.last_written.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.statements.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.text_statements.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.rules.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.check_whether_statement_exists.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.does_rule_exists.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.add_statement.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.escapeRegExp.js"></script>
+<script language="JavaScript" type="text/javascript" src="js/lookup.rewrite.js"></script>
 <script>
     // treat every object like a web-server
-    lookup = {};
-    lookup.last_written = "";
-    lookup.statements = [
-    ];
-
-    lookup.text_statements = [
-        "Tom is cat",
-        "cat has tail", 
-        "cat has whiskers", 
-        "*A* is *B* | *B* has *C* => *A* has *C*",
-        "*A*1 + 1 => *A*2",
-        "*A*2 + 1 => *A*3",
-        "*A*3 + 1 => *A*4",
-        "*A*4 + 1 => *A*5",
-        "*A*5 + 1 => *A*6",
-        "*A*6 + 1 => *A*7",
-        "*A*7 + 1 => *A*8",
-        "*A*8 + 1 => *A*9",
-        "*A*9 + 1 => *A*0 + 10",
-        "*A* + 2 + *B* => *A* + 1 + 1 + *B*",
-        "*A* 3 => *A* 2 + 1",
-        "*A* 4 => *A* 3 + 1",
-        "*A* 5 => *A* 4 + 1",
-        "*A* 6 => *A* 5 + 1",
-        "*A* 7 => *A* 6 + 1",
-        "*A* 8 => *A* 7 + 1",
-        "*A* 9 => *A* 8 + 1",
-        // -----
-        "5 + 3"
-
-    ];
+    // when I add a new fact I need to check it against all rules
+    // when I add a new rule I need to check it against all facts
 </script>
-<script>
-    lookup.rules = [];
-    lookup.check_whether_statement_exists = function(stuff)
-    {
-        var result = lookup.statements.some(existing_statement => existing_statement.original === stuff);
-        return result;
-    };
-    lookup.does_rule_exists = function(stuff)
-    {
-        var result = lookup.rules.some(existing_rule => existing_rule.original === stuff);
-        return result;
-    };
-    lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
-    {
-        if (stuff.indexOf(" => ") >= 0)
-        {
-            if (lookup.does_rule_exists(stuff))
-            {
-                return;
-            }
-            const named_slot_regexp = /\*[A-Z]\*/
-            const [conditionsPart , conclusion] = stuff.split(" => ");
-            const conditions = conditionsPart.split(" | ");
-            const conditions_objects = conditions.map(single_condition => {
-                
-                var splitted_by_slots = single_condition.split(named_slot_regexp);
-                var non_empty_static_parts = splitted_by_slots
-                    .filter(e => e !== "");
-                var mapped = 
-                    splitted_by_slots
-                    .map((p, index) => {
-                        if(index == 0)
-                        {
-                            if ( p !== "")
-                            {
-                                return "^" + lookup.escapeRegExp(p)
-                            }
-                        }
-                        if (index === splitted_by_slots.length - 1)
-                        {
-                            if (p !== "")
-                            {
-                                return lookup.escapeRegExp(p) + "$";
-                            }
-                        }
-                        if (p !== "")
-                        {
-                            return lookup.escapeRegExp(p);
-                        }
-                        return "";
-                    });
 
-                var filtered_regexps = mapped.filter(p => p !== "");
-
-                var mask = filtered_regexps.join("|");
-                var inverted_slot_regexp = new RegExp(mask);
-
-                var partially_prepared_regexp_components = splitted_by_slots.map(e => e === "" ? ".+" : lookup.escapeRegExp(e) );
-                var partially_prepared_regexp = partially_prepared_regexp_components.join("");
-                var should_match = `^${partially_prepared_regexp}\$`;
-                var should_match_regexp = new RegExp(should_match);
-                var slots = single_condition.split(inverted_slot_regexp);
-                var slots_non_empty = slots.filter(e => e !== "");
-                const result = {
-                    already_was_matched: splitted_by_slots.length == 1,
-                    static_parts: non_empty_static_parts,
-                    inverted_slot_regexp: inverted_slot_regexp,
-                    slots: slots_non_empty,
-                    should_match_regexp: should_match_regexp,
-                    original: single_condition
-                };
-                return result;
-            });
-            const to_add = {
-                type: "rule",
-                original: stuff,
-                where_it_comes_from: where_it_comes_from,
-                data: {
-                    conditions: conditions_objects,
-                    conclusion: conclusion
-                },
-                chain_of_thought: chain_of_thought || [stuff]
-            };
-            if ( to_add.data.conditions.every(single_condition => single_condition.already_was_matched))
-            {
-                lookup.add_statement(to_add.data.conclusion, "fully-applied-rule", to_add.chain_of_thought);
-            }
-            else
-            {
-                lookup.rules.push(to_add);
-                console.log(to_add);
-            }
-            
-        }
-        else
-        {
-            if (lookup.check_whether_statement_exists(stuff))
-            {
-                return;
-            }
-            if (lookup.statements.length > 1000)
-            {
-                console.log("Statements limit");
-                return;
-            }
-            const to_add = {
-                type: "fact",
-                original: stuff,
-                where_it_comes_from: where_it_comes_from,
-                chain_of_thought: chain_of_thought || [stuff]
-            };
-            lookup.statements.push(to_add);
-            console.log(to_add);
-        }
-    };
-    </script>
     <script>
 
     
-    lookup.escapeRegExp = function(string) 
+    
+
+    
+</script>
+<script>
+    lookup.unprocessed_statements = [];
+    lookup.post_to_unprocessed_statements = function(stuff, where_it_comes_from)
     {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     };
-
-    lookup.index_in_statements = 0;
-    lookup.index_in_rules = 0;
-    lookup.rewrite = function()
-    {
-        var start = new Date();
-        var operations_passed = 0;
-        console.log("rewrite", lookup.statements.length);
-        for(;lookup.index_in_statements < lookup.statements.length; lookup.index_in_statements++)
-        {
-            const fact = lookup.statements[lookup.index_in_statements];
-            if (fact.original.includes(" => ")) 
-            {
-                console.log("Weird, fact looks like rule", fact);
-                continue;
-            }
-            for(; lookup.index_in_rules < lookup.rules.length; lookup.index_in_rules++)
-            {
-                const rule = lookup.rules[lookup.index_in_rules];
-                if (rule.type != "rule") continue;
-                operations_passed++;
-                var all_conditions_are_met = true;
-                
-                if (operations_passed > 1000)
-                {
-                    var current_date = new Date();
-                    if (current_date - start > 30)
-                    {
-                        setTimeout(lookup.rewrite, 30);
-                        return;
-                    }
-                    operations_passed -= 1000;
-                }
-
-                for(const single_condition of rule.data.conditions)
-                {
-                    if (single_condition.already_was_matched) {
-                        continue;
-                    }
-
-                    if (single_condition.should_match_regexp.test(fact.original) !== true)
-                    {
-                        continue;
-                    }
-                    
-                    var values = fact.original.split(single_condition.inverted_slot_regexp);
-                    var non_empty_values = values.filter(v => v !== "");
-                    if ( non_empty_values.length != single_condition.slots.length)
-                    {
-                        console.log("values do not match to slots which is weird", fact.original, single_condition.original)
-                    }
-                    
-                    //console.log(values, variables);
-                    var combined_rule = rule.original;
-                    for(var k = 0; k < single_condition.slots.length; k++)
-                    {
-                        const just_slot = single_condition.slots[k];
-                        const just_value = non_empty_values[k];
-
-                        combined_rule = combined_rule.replaceAll(just_slot, just_value);
-                    }
-
-                    
-                    var chain_of_thought = [rule.original, fact.original, combined_rule];
-                    lookup.add_statement(combined_rule, 'partially-applied-rule', chain_of_thought);
-                    break;
-
-                }
-            }
-            lookup.index_in_rules = 0;
-        }
-        lookup.index_in_statements = 0;
-        setTimeout(lookup.rewrite, 30);
-    };
-    setTimeout(lookup.rewrite, 30);
 </script>
 <script>
     for(var text of lookup.text_statements)
@@ -259,5 +55,5 @@ What has Tom? => Tom has *?* // query </br>
 // I forgot to check if rule is A is B hello B, that B should have same value
 
 <input id="repl" onkeyup="lookup.last_written = event.originalTarget.value; console.log(lookup.last_written);" />
-<button onclick="lookup.add_statement(lookup.last_written, 'user-input')">add</button>
+<button onclick="lookup.post_to_unprocessed_statements(lookup.last_written, 'user-input')">add</button>
 </body>
