@@ -1,5 +1,6 @@
 
 <script>
+    // treat every object like a web-server
     lookup = {};
     lookup.last_written = "";
     lookup.statements = [
@@ -7,51 +8,54 @@
 
     lookup.text_statements = [
         "Tom is cat",
-        // "cat has tail", 
-        // "cat has whiskers", 
-        // "*A* is *B* | *B* has *C* => *A* has *C*",
+        "cat has tail", 
+        "cat has whiskers", 
+        "*A* is *B* | *B* has *C* => *A* has *C*",
         "*A*1 + 1 => *A*2",
-        // "*A*2 + 1 => *A*3",
-        // "*A*3 + 1 => *A*4",
-        // "*A*4 + 1 => *A*5",
-        // "*A*5 + 1 => *A*6",
-        // "*A*6 + 1 => *A*7",
-        // "*A*7 + 1 => *A*8",
-        // "*A*8 + 1 => *A*9",
-        // "*A*9 + 1 => *A*0 + 10",
-        // "*A* 2 => *A* 1 + 1",
-        // "*A* 3 => *A* 2 + 1",
-        // "*A* 4 => *A* 3 + 1",
-        // "*A* 5 => *A* 4 + 1",
-        // "*A* 6 => *A* 5 + 1",
-        // "*A* 7 => *A* 6 + 1",
-        // "*A* 8 => *A* 7 + 1",
-        // "*A* 9 => *A* 8 + 1",
-        // // -----
-        // "5 + 3"
+        "*A*2 + 1 => *A*3",
+        "*A*3 + 1 => *A*4",
+        "*A*4 + 1 => *A*5",
+        "*A*5 + 1 => *A*6",
+        "*A*6 + 1 => *A*7",
+        "*A*7 + 1 => *A*8",
+        "*A*8 + 1 => *A*9",
+        "*A*9 + 1 => *A*0 + 10",
+        "*A* + 2 + *B* => *A* + 1 + 1 + *B*",
+        "*A* 3 => *A* 2 + 1",
+        "*A* 4 => *A* 3 + 1",
+        "*A* 5 => *A* 4 + 1",
+        "*A* 6 => *A* 5 + 1",
+        "*A* 7 => *A* 6 + 1",
+        "*A* 8 => *A* 7 + 1",
+        "*A* 9 => *A* 8 + 1",
+        // -----
+        "5 + 3"
 
     ];
 </script>
 <script>
     lookup.rules = [];
+    lookup.check_whether_statement_exists = function(stuff)
+    {
+        var result = lookup.statements.some(existing_statement => existing_statement.original === stuff);
+        return result;
+    };
+    lookup.does_rule_exists = function(stuff)
+    {
+        var result = lookup.rules.some(existing_rule => existing_rule.original === stuff);
+        return result;
+    };
     lookup.add_statement = function(stuff, where_it_comes_from, chain_of_thought)
     {
-        if (lookup.statements.length > 1000)
-        {
-            console.log("Statements limit");
-            return;
-
-        }
-        for(const existing of lookup.statements)
-        {
-            if(existing.original === stuff) 
-            {
-                return;
-            }
-        }
+        
+    
          
         if (stuff.indexOf(" => ") >= 0)
         {
+            if (lookup.does_rule_exists(stuff))
+            {
+                return;
+            }
             const named_slot_regexp = /\*[A-Z]\*/
             const [conditionsPart , conclusion] = stuff.split(" => ");
             const conditions = conditionsPart.split(" | ");
@@ -94,13 +98,7 @@
             };
             if ( to_add.data.conditions.every(single_condition => single_condition.already_was_matched))
             {
-                const to_add_statement_from_rule = {
-                    type: "fact",
-                    original: stuff,
-                    where_it_comes_from: "fully-applied-rule",
-                    chain_of_thought: chain_of_thought || [stuff]
-                };
-                lookup.statements.add(to_add_statement_from_rule)
+                lookup.add_statement(to_add.data.conclusion, "fully-applied-rule", to_add.chain_of_thought);
             }
             else
             {
@@ -111,6 +109,15 @@
         }
         else
         {
+            if (lookup.check_whether_statement_exists(stuff))
+            {
+                return;
+            }
+            if (lookup.statements.length > 1000)
+            {
+                console.log("Statements limit");
+                return;
+            }
             const to_add = {
                 type: "fact",
                 original: stuff,
@@ -140,7 +147,11 @@
         for(;lookup.index_in_statements < lookup.statements.length; lookup.index_in_statements++)
         {
             const fact = lookup.statements[lookup.index_in_statements];
-            if (fact.type != "fact") continue;
+            if (fact.original.includes(" => ")) 
+            {
+                console.log("Weird, fact looks like rule", fact);
+                continue;
+            }
             for(; lookup.index_in_rules < lookup.rules.length; lookup.index_in_rules++)
             {
                 const rule = lookup.rules[lookup.index_in_rules];
