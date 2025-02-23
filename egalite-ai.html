@@ -12,20 +12,11 @@
     // treat every object like a web-server
     // when I add a new fact I need to check it against all rules
     // when I add a new rule I need to check it against all facts
-</script>
 
-    <script>
-
-    
-    
-
-    
-</script>
-<script>
     lookup.unprocessed_statements = [];
-    lookup.post_to_unprocessed_statements = function(stuff, where_it_comes_from)
+    lookup.post_to_unprocessed_statements_from_user = function(stuff)
     {
-
+        lookup.add_statement(stuff, 'user-input');
     };
 </script>
 <script>
@@ -55,5 +46,5 @@ What has Tom? => Tom has *?* // query </br>
 // I forgot to check if rule is A is B hello B, that B should have same value
 
 <input id="repl" onkeyup="lookup.last_written = event.originalTarget.value; console.log(lookup.last_written);" />
-<button onclick="lookup.post_to_unprocessed_statements(lookup.last_written, 'user-input')">add</button>
+<button onclick="lookup.post_to_unprocessed_statements_from_user(lookup.last_written)">add</button>
 </body>
